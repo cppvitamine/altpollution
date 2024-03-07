@@ -1,5 +1,4 @@
 syntax = "proto3";
-
 package sensors;
 
 import "google/protobuf/timestamp.proto";
