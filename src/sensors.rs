@@ -8,3 +8,9 @@ pub struct Pms7003Sensor {
     #[prost(message, optional, tag = "3")]
     pub measurement_time: ::core::option::Option<::prost_types::Timestamp>,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DummySensor {
+    #[prost(string, tag = "1")]
+    pub fake_payload: ::prost::alloc::string::String,
+}

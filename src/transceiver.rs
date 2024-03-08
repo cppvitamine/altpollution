@@ -1,13 +1,37 @@
-use std::io;
+use std::{borrow::Borrow, io};
 use serde_json::{Result, Value};
 
-struct Receiver {
-    setting: serde_json::Value
+pub trait Socket<T> {
+    fn poll(&self) -> Option<T>;
 }
-    
-impl Receiver {
-    // simulate payload from sensor
-    pub fn fake_polling() -> String {
-        "FAKE PAYLOAD".to_string()
+
+pub trait Forwarder {
+    fn send(&self) -> Result<()>;
+}
+
+pub struct Adapter {
+    name: String,
+    settings: serde_json::Value
+}
+
+impl Adapter {
+    pub fn new(name: String, settings: serde_json::Value) -> Self { 
+        Self {name, settings}                       
     }
+
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn get_settings(&self) -> String {
+        self.settings.clone().to_string()
+    }
+}
+
+pub struct PMSAdapter {
+    adapter: Adapter
+}
+
+pub struct DummyAdapter {
+    adapter: Adapter
 }
