@@ -11,7 +11,7 @@
                 "flowcontrol" : "null",
                 "timeout" : 2
             },
-            "dummysensor" :
+            "dummy" :
             {
                 "baudrate" : 0,
                 "serial" : "null",
