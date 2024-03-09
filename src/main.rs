@@ -11,7 +11,6 @@ fn main() -> () {
         Ok(v) => v,
         _ => panic!("{} failed to load sensors configuration - program will exit now.", tag)
     };
-
-    let base_adapter: Adapter = Adapter::new("base_adapter".to_string(), cfg);
-    println!("{} new adapter: {} has been created with setting: {}", tag, base_adapter.get_name(), base_adapter.get_settings());
+ 
+    let dummy_adapter: Adapter = Adapter::new("dummy_adapter".to_string(), cfg["dummy"].to_owned());
 }
