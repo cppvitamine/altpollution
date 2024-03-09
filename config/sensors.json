@@ -1,0 +1,26 @@
+{
+    "sensors" : [
+        {
+            "pms7003" : 
+            {
+                "baudrate" : 9600,
+                "serial" : "/dev/ttyUSB0",
+                "databits" : 8,
+                "stopbits": 1,
+                "parity" : "null",
+                "flowcontrol" : "null",
+                "timeout" : 2
+            },
+            "dummy" :
+            {
+                "baudrate" : 0,
+                "serial" : "null",
+                "databits" : 0,
+                "stopbits": 0,
+                "parity" : "null",
+                "flowcontrol" : "null",
+                "timeout" : 0
+            }
+        }
+    ]
+}

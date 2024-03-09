@@ -1,0 +1,14 @@
+syntax = "proto3";
+package sensors;
+
+import "google/protobuf/timestamp.proto";
+
+message PMS7003Sensor {
+    float pm2_5 = 1;
+    float pm10 = 2;
+    google.protobuf.Timestamp measurement_time = 3;
+}
+
+message DummySensor {
+    string fake_payload = 1;
+}
