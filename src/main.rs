@@ -1,6 +1,7 @@
-use serde_json::{Result, Value};
 mod transceiver;
-use crate::transceiver::Adapter;
+mod sensors;
+
+use serde_json::{Result, Value};
 
 fn main() -> () {
     let tag: &str = "[main]";
@@ -11,6 +12,5 @@ fn main() -> () {
         Ok(v) => v,
         _ => panic!("{} failed to load sensors configuration - program will exit now.", tag)
     };
- 
-    let dummy_adapter: Adapter = Adapter::new("dummy_adapter".to_string(), cfg["dummy"].to_owned());
+     
 }

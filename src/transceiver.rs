@@ -1,28 +1,39 @@
-use serde_json::{Result, Value};
+use std::sync::Arc;
 
-pub trait Socket<T> {
-    fn poll(&self) -> Option<T>;
+use queues::Queue;
+use serde_json::{Result, Value};
+use crate::sensors::{DummySensor, Pms7003Sensor};
+
+#[derive(Clone)]
+enum SensorData {
+    DummySensor,
+    Pms7003Sensor,
 }
 
-pub trait Forwarder {
-    fn send(&self) -> Result<()>;
+pub trait Socket<SensorData> {
+    fn start_polling(&self) -> ();
+    fn get_message() -> Option<SensorData>;
 }
 
 pub struct Adapter {
     pub name: String,
-    pub settings: serde_json::Value
+    pub settings: serde_json::Value,
+    data: Queue<SensorData>,
 }
 
 impl Adapter {
-    pub fn new(name: String, settings: serde_json::Value) -> Self { 
-        Self {name, settings}                       
+    pub fn new(name: String, settings: serde_json::Value, data: Queue<SensorData>) -> Self { 
+        Self {name, settings, data}                       
     }
 }
 
-pub struct PMSAdapter {
-    pub adapter: Adapter
-}
+impl Socket<DummySensor> for Adapter {
+    fn start_polling(&self) -> () {
+        
+    }
 
-pub struct DummyAdapter {
-    pub adapter: Adapter
+    fn get_message() -> Option<DummySensor> {
+        let ds: DummySensor = DummySensor::new("fake payload".to_string());
+        Some(ds)
+    }
 }

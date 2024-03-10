@@ -1,3 +1,5 @@
+use prost_types::Timestamp;
+
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Pms7003Sensor {
@@ -13,4 +15,10 @@ pub struct Pms7003Sensor {
 pub struct DummySensor {
     #[prost(string, tag = "1")]
     pub fake_payload: ::prost::alloc::string::String,
+}
+
+impl DummySensor {
+    pub fn new(fake_payload: String) -> Self {
+        Self { fake_payload }
+    }
 }
