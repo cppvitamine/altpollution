@@ -32,7 +32,6 @@ version = "0.1.0"
 dependencies = [
  "prost",
  "prost-types",
- "queues",
  "serde_json",
  "tonic",
  "tonic-build",
@@ -629,12 +628,6 @@ checksum = "193898f59edcf43c26227dcd4c8427f00d99d61e95dcde58dabd49fa291d470e"
 dependencies = [
  "prost",
 ]
-
-[[package]]
-name = "queues"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1475abae4f8ad4998590fe3acfe20104f0a5d48fc420c817cd2c09c3f56151f0"
 
 [[package]]
 name = "quote"

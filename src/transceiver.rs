@@ -1,39 +1,43 @@
-use std::sync::Arc;
+use std::{collections::VecDeque, option::Option, sync::{Arc, Mutex}, thread::{spawn, JoinHandle}, time::Duration};
 
-use queues::Queue;
-use serde_json::{Result, Value};
-use crate::sensors::{DummySensor, Pms7003Sensor};
-
-#[derive(Clone)]
-enum SensorData {
-    DummySensor,
-    Pms7003Sensor,
-}
-
-pub trait Socket<SensorData> {
-    fn start_polling(&self) -> ();
-    fn get_message() -> Option<SensorData>;
+pub trait Socket<T> {
+    fn start(&mut self, events: Arc<Mutex<VecDeque<T>>>) -> ();
+    fn stop(&mut self) -> Result<(), String>;
 }
 
 pub struct Adapter {
     pub name: String,
     pub settings: serde_json::Value,
-    data: Queue<SensorData>,
+    handle: Option<JoinHandle<()>>,
 }
 
 impl Adapter {
-    pub fn new(name: String, settings: serde_json::Value, data: Queue<SensorData>) -> Self { 
-        Self {name, settings, data}                       
+    pub fn new(name: String, settings: serde_json::Value) -> Self { 
+        let handle = None;
+        Self {name, settings, handle}              
+    }
+
+    fn valid_config(&self) -> Result<(), String> {
+        Ok(())
     }
 }
 
-impl Socket<DummySensor> for Adapter {
-    fn start_polling(&self) -> () {
-        
+impl Socket<String> for Adapter {
+    fn start(&mut self, events: Arc<Mutex<VecDeque<String>>>) -> () {
+        let h = spawn(move || {
+            loop {
+                events.lock().unwrap().push_back("fake payload from socket".to_string());
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        });
+        self.handle = Some(h);
     }
 
-    fn get_message() -> Option<DummySensor> {
-        let ds: DummySensor = DummySensor::new("fake payload".to_string());
-        Some(ds)
+    fn stop(&mut self) -> Result<(), String> {
+        match self.handle.take() {
+            Some(handle) =>  handle.join().unwrap(),
+            _ => return Err("failed to recover thread handle".to_string())
+        }
+        Ok(())
     }
 }
