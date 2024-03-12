@@ -1,28 +1,43 @@
-use serde_json::{Result, Value};
+use std::{collections::VecDeque, option::Option, sync::{Arc, Mutex}, thread::{spawn, JoinHandle}, time::Duration};
 
 pub trait Socket<T> {
-    fn poll(&self) -> Option<T>;
-}
-
-pub trait Forwarder {
-    fn send(&self) -> Result<()>;
+    fn start(&mut self, events: Arc<Mutex<VecDeque<T>>>) -> ();
+    fn stop(&mut self) -> Result<(), String>;
 }
 
 pub struct Adapter {
     pub name: String,
-    pub settings: serde_json::Value
+    pub settings: serde_json::Value,
+    handle: Option<JoinHandle<()>>,
 }
 
 impl Adapter {
     pub fn new(name: String, settings: serde_json::Value) -> Self { 
-        Self {name, settings}                       
+        let handle = None;
+        Self {name, settings, handle}              
+    }
+
+    fn valid_config(&self) -> Result<(), String> {
+        Ok(())
     }
 }
 
-pub struct PMSAdapter {
-    pub adapter: Adapter
-}
+impl Socket<String> for Adapter {
+    fn start(&mut self, events: Arc<Mutex<VecDeque<String>>>) -> () {
+        let h = spawn(move || {
+            loop {
+                events.lock().unwrap().push_back("fake payload from socket".to_string());
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        });
+        self.handle = Some(h);
+    }
 
-pub struct DummyAdapter {
-    pub adapter: Adapter
+    fn stop(&mut self) -> Result<(), String> {
+        match self.handle.take() {
+            Some(handle) =>  handle.join().unwrap(),
+            _ => return Err("failed to recover thread handle".to_string())
+        }
+        Ok(())
+    }
 }

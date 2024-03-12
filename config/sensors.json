@@ -19,7 +19,8 @@
                 "stopbits": 0,
                 "parity" : "null",
                 "flowcontrol" : "null",
-                "timeout" : 0
+                "timeout" : 0,
+                "clock_ms": 1000
             }
         }
     ]
