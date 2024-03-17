@@ -34,8 +34,8 @@ impl Socket<DummySensor> for Adapter {
 
         self.handle = Some(spawn(move || {
             loop {
-                shared_data.0.lock().unwrap().push_back(DummySensor{fake_payload: "fake payload from socket".to_string()});
                 std::thread::sleep(Duration::from_millis(500));
+                shared_data.0.lock().unwrap().push_back(DummySensor{fake_payload: "fake payload from socket".to_string()});
                 shared_data.1.notify_one();
             }
         }));
