@@ -19,9 +19,6 @@ fn main() -> Result<(), String> {
     let shared_data: Arc<(std::sync::Mutex<VecDeque<DummySensor>>, Condvar)> = Arc::new((std::sync::Mutex::new(std::collections::VecDeque::new()), std::sync::Condvar::new()));
     let mut adapt = Adapter::new("test".to_string(), cfg["dummy"].clone());
 
-    let mut old_size: usize = 0;
-    let mut curr_size: usize = shared_data.0.lock().unwrap().len();
-
     match adapt.start(shared_data.clone()) {
         Ok(_) => println!("events queue for adapter: {} correctly forwared to adapter", adapt.name),
         _ => return Err("failed to share events queue for adatper".to_string())
@@ -33,13 +30,7 @@ fn main() -> Result<(), String> {
         }
         
         println!("switching to passive wait on queue for adapter: {} to get events...", adapt.name);
-
-        while old_size >= curr_size {
-            curr_size = shared_data.1.wait(shared_data.0.lock().unwrap()).unwrap().len();
-        }
-
-        old_size = curr_size;
-        //let _guard = shared_data.1.wait_while(shared_data.0.lock().unwrap(), |q| {!q.is_empty() }).unwrap();
-        println!("queue: {:?}", shared_data.0.lock().unwrap());
+        let _ = shared_data.1.wait(shared_data.0.lock().unwrap());
+        println!("queue size: {}", shared_data.0.lock().unwrap().len());
     }
 }   
