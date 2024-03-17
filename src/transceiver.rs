@@ -1,7 +1,10 @@
-use std::{collections::VecDeque, option::Option, sync::{Arc, Mutex}, thread::{spawn, JoinHandle}, time::Duration};
+use std::{collections::VecDeque, option::Option, sync::{Arc, Mutex, Condvar}, thread::{spawn, JoinHandle}, time::Duration};
+use crate::sensors::{DummySensor, Pms7003Sensor};
 
 pub trait Socket<T> {
-    fn start(&mut self, events: Arc<Mutex<VecDeque<T>>>) -> ();
+    fn validate_config(&mut self) -> Result<(), String>;
+
+    fn start(&mut self, shared_data: Arc<(Mutex<VecDeque<T>>, Condvar)>) -> Result<(), String>;
     fn stop(&mut self) -> Result<(), String>;
 }
 
@@ -13,29 +16,36 @@ pub struct Adapter {
 
 impl Adapter {
     pub fn new(name: String, settings: serde_json::Value) -> Self { 
-        let handle = None;
-        Self {name, settings, handle}              
-    }
-
-    fn valid_config(&self) -> Result<(), String> {
-        Ok(())
-    }
+        let handle = None;  
+        Self {name, settings, handle}   
+    }           
 }
 
-impl Socket<String> for Adapter {
-    fn start(&mut self, events: Arc<Mutex<VecDeque<String>>>) -> () {
-        let h = spawn(move || {
+impl Socket<DummySensor> for Adapter {
+    fn validate_config(&mut self) ->  Result<(), String> {
+        Ok(())
+    }
+
+    fn start(&mut self, shared_data: Arc<(Mutex<VecDeque<DummySensor>>, Condvar)>) -> Result<(), String> {
+        match self.validate_config() {
+            Ok(_) => println!("configuration correctly validated for adapter: {}", self.name),
+            _ => return Err("failed to validate configuration for adapter: {} - start aborted.".to_string())
+        }
+
+        self.handle = Some(spawn(move || {
             loop {
-                events.lock().unwrap().push_back("fake payload from socket".to_string());
-                std::thread::sleep(Duration::from_millis(10));
+                shared_data.0.lock().unwrap().push_back(DummySensor{fake_payload: "fake payload from socket".to_string()});
+                std::thread::sleep(Duration::from_millis(500));
+                shared_data.1.notify_one();
             }
-        });
-        self.handle = Some(h);
+        }));
+
+        Ok(())
     }
 
     fn stop(&mut self) -> Result<(), String> {
         match self.handle.take() {
-            Some(handle) =>  handle.join().unwrap(),
+            Some(handle) =>  handle.join().expect(&format!("failed to join thread via handle for adapter: {}", self.name)),
             _ => return Err("failed to recover thread handle".to_string())
         }
         Ok(())
