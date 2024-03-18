@@ -4,7 +4,7 @@ use crate::sensors::{DummySensor, Pms7003Sensor};
 pub trait Socket<T> {
     fn validate_config(&mut self) -> Result<(), String>;
 
-    fn start(&mut self, shared_data: Arc<(Mutex<VecDeque<T>>, Condvar)>) -> Result<(), String>;
+    fn start(&mut self, shared_data: Arc<(Mutex<VecDeque<T>>, Condvar)>, shutdown_request: Arc<Mutex<bool>>) -> Result<(), String>;
     fn stop(&mut self) -> Result<(), String>;
 }
 
@@ -26,7 +26,7 @@ impl Socket<DummySensor> for Adapter {
         Ok(())
     }
 
-    fn start(&mut self, shared_data: Arc<(Mutex<VecDeque<DummySensor>>, Condvar)>) -> Result<(), String> {
+    fn start(&mut self, shared_data: Arc<(Mutex<VecDeque<DummySensor>>, Condvar)>, shutdown_request: Arc<Mutex<bool>>) -> Result<(), String> {
         match self.validate_config() {
             Ok(_) => println!("configuration correctly validated for adapter: {}", self.name),
             _ => return Err("failed to validate configuration for adapter: {} - start aborted.".to_string())
@@ -34,6 +34,9 @@ impl Socket<DummySensor> for Adapter {
 
         self.handle = Some(spawn(move || {
             loop {
+                if *shutdown_request.lock().unwrap() {
+                    break;
+                }                
                 std::thread::sleep(Duration::from_millis(500));
                 shared_data.0.lock().unwrap().push_back(DummySensor{fake_payload: "fake payload from socket".to_string()});
                 shared_data.1.notify_one();
