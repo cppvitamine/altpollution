@@ -1,6 +1,6 @@
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Pms7003Sensor {
+pub struct Pms7003SensorMeasurement {
     #[prost(float, tag = "1")]
     pub pm2_5: f32,
     #[prost(float, tag = "2")]

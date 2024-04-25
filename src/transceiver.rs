@@ -1,5 +1,5 @@
 use std::{collections::VecDeque, option::Option, sync::{Arc, Mutex, Condvar}, thread::{spawn, JoinHandle}, time::Duration};
-use crate::sensors::{DummySensor, Pms7003Sensor};
+use crate::sensors::DummySensor;
 
 pub trait Socket<T> {
     fn validate_config(&mut self) -> Result<(), String>;
@@ -41,7 +41,7 @@ impl Socket<DummySensor> for Adapter {
                 shared_data.0.lock().unwrap().push_back(DummySensor{fake_payload: "fake payload from socket".to_string()});
                 shared_data.1.notify_one();
             }
-        }));
+        })); 
 
         Ok(())
     }

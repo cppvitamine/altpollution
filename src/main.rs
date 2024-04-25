@@ -4,8 +4,11 @@ mod sensors;
 use std::{collections::VecDeque, fmt::format, sync::{Arc, Condvar, Mutex}};
 
 use serde_json::Value;
-use crate::{sensors::{Pms7003Sensor, DummySensor}, transceiver::{Adapter, Socket}};
+use crate::{sensors::DummySensor, transceiver::{Adapter, Socket}};
 use serial2::SerialPort;
+
+use linux_embedded_hal;
+use pms_7003::*;
 
 fn main() -> Result<(), String> {
     let tag: &str = "[main]";
@@ -26,7 +29,7 @@ fn main() -> Result<(), String> {
     };
 
     loop {
-        if shared_data.0.lock().unwrap().len() >= 10 {
+        if shared_data.0.lock().unwrap().len() >= 1 {
             let mut shutdown = shutdown_req.lock().unwrap();
             *shutdown = true;
             break;
@@ -46,21 +49,11 @@ fn main() -> Result<(), String> {
     let port = match SerialPort::open("/dev/tty.usbserial-A10OQMN5", 9600) {
         Ok(p) => p,
         Err(e) => return Err(format!("{} failed to open serial port due to error: {}", tag, e)),
-        _ => return Err("unknown failure while opening serial port".to_string())
     };
 
-    let mut buffer = [0; 256];
-    for i in 0..10 {
-        println!("{} reading buffer: {}", tag, i);
-        let read = match port.read(&mut buffer) {
-            Ok(r) => r,
-            _ => return Err("failed to read from serial port".to_string())
-        };
+    let device = linux_embedded_hal::Serial::open(String::from("/dev/tty.usbserial-A10OQMN5")).unwrap();
+    let mut sensor = Pms7003Sensor::new(device);
 
-        if read == 0 {
-            println!("{} no bytes read from serial port", tag);
-        }
-    }
 
     Ok(())
 }

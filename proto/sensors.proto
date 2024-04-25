@@ -3,7 +3,7 @@ package sensors;
 
 import "google/protobuf/timestamp.proto";
 
-message PMS7003Sensor {
+message PMS7003SensorMeasurement {
     float pm2_5 = 1;
     float pm10 = 2;
     google.protobuf.Timestamp measurement_time = 3;
