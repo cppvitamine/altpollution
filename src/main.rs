@@ -46,14 +46,15 @@ fn main() -> Result<(), String> {
         _ => return Err("failed to stop adapter - quitting".to_string())
     };
     
-    let port = match SerialPort::open("/dev/tty.usbserial-A10OQMN5", 9600) {
-        Ok(p) => p,
-        Err(e) => return Err(format!("{} failed to open serial port due to error: {}", tag, e)),
-    };
-
-    let device = linux_embedded_hal::Serial::open(String::from("/dev/tty.usbserial-A10OQMN5")).unwrap();
+    let device = linux_embedded_hal::Serial::open("/dev/ttyUSB0").expect("failed to retrieve device serial port path from configuration");
     let mut sensor = Pms7003Sensor::new(device);
 
-
+    loop {
+        match sensor.read() {
+            Ok(frame) => println!("{:?}", frame),
+            Err(e) => println!("{:?}", e),
+        }
+    }
+    
     Ok(())
 }
