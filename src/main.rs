@@ -1,14 +1,9 @@
 mod transceiver;
 mod sensors;
 
-use std::{collections::VecDeque, fmt::format, sync::{Arc, Condvar, Mutex}};
-
+use std::{collections::VecDeque, sync::{Arc, Condvar, Mutex}};
 use serde_json::Value;
-use crate::{sensors::DummySensor, transceiver::{Adapter, Socket}};
-use serial2::SerialPort;
-
-use linux_embedded_hal;
-use pms_7003::*;
+use crate::{sensors::Pms7003SensorMeasurement, transceiver::{Adapter, Socket}};
 
 fn main() -> Result<(), String> {
     let tag: &str = "[main]";
@@ -20,8 +15,8 @@ fn main() -> Result<(), String> {
         _ => panic!("{} failed to load sensors configuration - program will exit now.", tag)
     };
     
-    let shared_data: Arc<(std::sync::Mutex<VecDeque<DummySensor>>, Condvar)> = Arc::new((std::sync::Mutex::new(std::collections::VecDeque::new()), std::sync::Condvar::new()));
-    let mut adapt = Adapter::new("test".to_string(), cfg["dummy"].clone());
+    let shared_data: Arc<(std::sync::Mutex<VecDeque<Pms7003SensorMeasurement>>, Condvar)> = Arc::new((std::sync::Mutex::new(std::collections::VecDeque::new()), std::sync::Condvar::new()));
+    let mut adapt: Adapter = Adapter::new("PMS7003".to_string(), cfg["sensors"]["pms7003"].clone());
     let shutdown_req = Arc::new(std::sync::Mutex::new(false));
     match adapt.start(shared_data.clone(), shutdown_req.clone()) {
         Ok(_) => println!("events queue for adapter: {} correctly forwared to adapter", adapt.name),
@@ -29,32 +24,21 @@ fn main() -> Result<(), String> {
     };
 
     loop {
-        if shared_data.0.lock().unwrap().len() >= 1 {
+        if shared_data.0.lock().unwrap().len() >= 10 {
             let mut shutdown = shutdown_req.lock().unwrap();
             *shutdown = true;
             break;
-        }
-        
+        }      
         println!("switching to passive wait on queue for adapter: {} to get events...", adapt.name);
         let _ = shared_data.1.wait(shared_data.0.lock().unwrap());
         println!("queue size: {}", shared_data.0.lock().unwrap().len());
+        println!("{} received frame: {:?}", tag, shared_data.0.lock().unwrap().front().unwrap());
     }
 
-    println!("{} received {} events for adapter: {}", tag, shared_data.0.lock().unwrap().len(), adapt.name);
-    match adapt.stop() {
+    match adapt.stop(shared_data.clone()) {
         Ok(_) => println!("adapter: {} correctly stopped", adapt.name),
         _ => return Err("failed to stop adapter - quitting".to_string())
     };
-    
-    let device = linux_embedded_hal::Serial::open("/dev/ttyUSB0").expect("failed to retrieve device serial port path from configuration");
-    let mut sensor = Pms7003Sensor::new(device);
-
-    loop {
-        match sensor.read() {
-            Ok(frame) => println!("{:?}", frame),
-            Err(e) => println!("{:?}", e),
-        }
-    }
     
     Ok(())
 }
