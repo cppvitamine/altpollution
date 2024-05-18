@@ -1,5 +1,5 @@
 use std::fmt;
-use std::{collections::VecDeque, option::Option, rc::Rc, sync::{Arc, Condvar, Mutex}, thread::{spawn, JoinHandle}, time::Duration};
+use std::{collections::VecDeque, option::Option, sync::{Arc, Condvar, Mutex}, thread::{spawn, JoinHandle}, time::Duration};
 use linux_embedded_hal;
 use pms_7003::*;
 use crate::sensors::{DummySensor, Pms7003SensorMeasurement};
@@ -72,11 +72,11 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
     }     
 
     fn stop(&mut self, shared_data: Arc<(Mutex<VecDeque<Pms7003SensorMeasurement>>, Condvar)>) -> Result<(), String> {
-        println!("frames in queue after stop: {}", shared_data.0.lock().unwrap().len());
         match self.handle.take() {
             Some(handle) =>  handle.join().expect(&format!("failed to join thread via handle for adapter: {}", self.name)),
             _ => return Err("failed to recover thread handle".to_string())
         }
+        println!("frames in queue after stop: {}", shared_data.0.lock().unwrap().len());
         Ok(())
     }
 }
@@ -107,11 +107,11 @@ impl Socket<DummySensor> for Adapter {
     }
 
     fn stop(&mut self, shared_data: Arc<(Mutex<VecDeque<DummySensor>>, Condvar)>) -> Result<(), String> {
-        println!("frames in queue after stop: {}", shared_data.0.lock().unwrap().len());
         match self.handle.take() {
             Some(handle) =>  handle.join().expect(&format!("failed to join thread via handle for adapter: {}", self.name)),
             _ => return Err("failed to recover thread handle".to_string())
         }
+        println!("frames in queue after stop: {}", shared_data.0.lock().unwrap().len());
         Ok(())
     }
 }

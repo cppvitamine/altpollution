@@ -23,16 +23,19 @@ fn main() -> Result<(), String> {
         _ => return Err("failed to share events queue for adatper".to_string())
     };
 
+    const TEST_TARGET_QSIZE: usize = 100;
+    let mut received_frames: usize = 0;
+
     loop {
-        if shared_data.0.lock().unwrap().len() >= 10 {
+        if received_frames == TEST_TARGET_QSIZE {
             let mut shutdown = shutdown_req.lock().unwrap();
             *shutdown = true;
             break;
         }      
         println!("switching to passive wait on queue for adapter: {} to get events...", adapt.name);
         let _ = shared_data.1.wait(shared_data.0.lock().unwrap());
-        println!("queue size: {}", shared_data.0.lock().unwrap().len());
-        println!("{} received frame: {:?}", tag, shared_data.0.lock().unwrap().front().unwrap());
+        println!("{} received frame: {:?}", tag, shared_data.0.lock().unwrap().pop_front().unwrap());
+        received_frames += 1;
     }
 
     match adapt.stop(shared_data.clone()) {
@@ -42,3 +45,4 @@ fn main() -> Result<(), String> {
     
     Ok(())
 }
+ 
