@@ -34,9 +34,11 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
             Ok(_) => println!("configuration correctly validated for adapter: {}", self.name),
             _ => return Err("failed to validate configuration for adapter: {} - start aborted.".to_string())
         }
+        
+        let target_serial_path: String = self.settings["serial"].to_string();
 
         self.handle = Some(spawn(move || {
-            let device = linux_embedded_hal::Serial::open("/dev/ttyUSB0").expect("failed to retrieve device serial port path from configuration");
+            let device = linux_embedded_hal::Serial::open(target_serial_path).expect("failed to retrieve device serial port path from configuration");
             let mut sensor = Pms7003Sensor::new(device);
             let mut max_retry: u8 = 20;
             loop {
