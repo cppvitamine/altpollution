@@ -32,7 +32,7 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
     fn start(&mut self, shared_data: Arc<(Mutex<VecDeque<Pms7003SensorMeasurement>>, Condvar)>, shutdown_request: Arc<Mutex<bool>>) -> Result<(), String> {
         match Socket::<Pms7003SensorMeasurement>::validate_config(self) {
             Ok(_) => println!("configuration correctly validated for adapter: {}", self.name),
-            _ => return Err("failed to validate configuration for adapter: {} - start aborted.".to_string())
+            _ => return Err("failed to validate configuration - start aborted.".to_string())
         }
         
         let target_serial_path: String = self.settings["serial"].to_string();

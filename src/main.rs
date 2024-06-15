@@ -6,13 +6,13 @@ mod transceiver;
 use crate::{sensors::Pms7003SensorMeasurement, transceiver::{Adapter, Socket}};
 
 fn main() -> Result<(), String> {
-    let tag: &str = "[main]";
+    const TAG: &'static str = "[main]";
     let sensor_config: &'static str = include_str!("../config/sensors.json");
-    println!("{} reading configuration from ../config/sensors.json - config value {}", tag, sensor_config);
+    println!("{} reading configuration from ../config/sensors.json - config value {}", TAG, sensor_config);
 
     let cfg: serde_json::Value = match serde_json::from_str(sensor_config) {
         Ok(v) => v,
-        _ => panic!("{} failed to load sensors configuration - program will exit now.", tag)
+        _ => panic!("{} failed to load sensors configuration - program will exit now.", TAG)
     };
     
     let shared_data: std::sync::Arc<(std::sync::Mutex<std::collections::VecDeque<Pms7003SensorMeasurement>>, std::sync::Condvar)> = std::sync::Arc::new((std::sync::Mutex::new(std::collections::VecDeque::new()), std::sync::Condvar::new()));
@@ -34,7 +34,7 @@ fn main() -> Result<(), String> {
         }      
         println!("switching to passive wait on queue for adapter: {} to get events...", adapt.name);
         let _ = shared_data.1.wait(shared_data.0.lock().unwrap());
-        println!("{} received frame: {:?}", tag, shared_data.0.lock().unwrap().pop_front().unwrap());
+        println!("{} received frame: {:?}", TAG, shared_data.0.lock().unwrap().pop_front().unwrap());
         received_frames += 1;
     }
 
