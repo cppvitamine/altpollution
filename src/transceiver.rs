@@ -35,7 +35,8 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
             _ => return Err("failed to validate configuration - start aborted.".to_string())
         }
         
-        let target_serial_path: String = self.settings["serial"].to_string();
+        //TODO: fix null path to serial device in settings config
+        let target_serial_path: String = "/dev/ttyUSB0".to_string();
 
         self.handle = Some(spawn(move || {
             let device = linux_embedded_hal::Serial::open(target_serial_path).expect("failed to retrieve device serial port path from configuration");
@@ -61,10 +62,10 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
                     _ => {
                         max_retry -= 1;
                         if max_retry == 0 {
-                            print!("[FATAL] failed to read PMS7003 sensor frame, no retry left - stopping adatper");
+                            println!("[FATAL] failed to read PMS7003 sensor frame, no retry left - stopping adatper");
                             break;
                         }
-                        print!("failed to read PMS7003 sensor frame, retry left: {}", max_retry);
+                        println!("failed to read PMS7003 sensor frame, retry left: {}", max_retry);
                     }
                 }
             }
