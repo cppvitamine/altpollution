@@ -4,6 +4,10 @@ mod sensors;
 mod transceiver;
 
 use crate::{interfaces::HardwareInterface, constants::AdapterType};
+use crate::sensors::Pms7003SensorMeasurement;
+
+use prost::bytes::buf;
+use prost::Message;
 
 fn main() -> Result<(), String> {
     const TAG: &'static str = "[main]";
@@ -17,10 +21,32 @@ fn main() -> Result<(), String> {
 
     let mut intf: HardwareInterface = HardwareInterface::new("HW Interface".to_string(), cfg);
     match intf.start_adapter(&AdapterType::Pms7003) {
-        Ok(_) => println!("PMS7003 sensor correctly started!"),
+        Ok(_) => println!("{} PMS7003 sensor correctly started!", TAG),
         _ => return Err("Failed to start target PMS7003 sensor!".to_string()),
     }
-    
+
+    let adapt_target: AdapterType = AdapterType::Pms7003;
+    let pms_events = intf.adapters[&adapt_target].1.clone();
+
+    loop {
+        let (lock, cvar) = &*pms_events;
+        let mut queue = cvar.wait(lock.lock().unwrap()).unwrap();
+
+        if let Some(received_frame) = queue.pop_front() {
+            println!("{} PMS7003 frame received: {:?}", TAG, received_frame);
+            let mut container: Vec<u8> = Vec::with_capacity(received_frame.encoded_len());
+            match received_frame.encode(&mut container) {
+                Ok(_) => {
+                    println!("{} incoming PMS7003 frame correctly encoded: {:x?}", TAG, container);
+                }
+                Err(e) => {
+                    println!("{} incoming PMS7003 frame encoding failed: {:?}", TAG, e);
+                }
+            }
+        } else {
+            println!("{} No frame to process", TAG);
+        }
+    }
+
     Ok(())
 }
- 
