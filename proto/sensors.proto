@@ -1,12 +1,13 @@
 syntax = "proto3";
 package sensors;
 
-import "google/protobuf/timestamp.proto";
-
-message PMS7003Sensor {
-    float pm2_5 = 1;
-    float pm10 = 2;
-    google.protobuf.Timestamp measurement_time = 3;
+message PMS7003SensorMeasurement {
+    int32 pm1_c_0= 1;
+    int32 pm2_c_5 = 2;
+    int32 pm10 = 3;
+    int32 pm1_c_0_atm = 4;
+    int32 pm2_c_5_atm = 5;
+    int32 pm10_atm = 6;
 }
 
 message DummySensor {
