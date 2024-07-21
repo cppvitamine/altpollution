@@ -19,10 +19,12 @@ fn main() -> Result<(), String> {
         _ => panic!("{} failed to load sensors configuration - program will exit now.", TAG)
     };
 
+    println!("{} sensors configuration loaded: {:?}", TAG, cfg);
+
     let mut intf: HardwareInterface = HardwareInterface::new("HW Interface".to_string(), cfg);
     match intf.start_adapter(&AdapterType::Pms7003) {
         Ok(_) => println!("{} PMS7003 sensor correctly started!", TAG),
-        _ => return Err("Failed to start target PMS7003 sensor!".to_string()),
+        Err(e) => panic!("{} failure to start target sensor Pms7003 reason: {} - program will exit now.", TAG, e)
     }
 
     let adapt_target: AdapterType = AdapterType::Pms7003;

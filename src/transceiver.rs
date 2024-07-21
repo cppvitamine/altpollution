@@ -20,24 +20,48 @@ pub struct Adapter {
 impl Adapter {
     pub fn new(name: String, settings: serde_json::Value) -> Self { 
         let handle = None;  
+        println!("adapter: {} received settings: {:?}", name, settings);
         Self {name, settings, handle}   
     }           
 }
 
 impl Socket<Pms7003SensorMeasurement> for Adapter {
     fn validate_config(&mut self) ->  Result<(), String> {
+        match self.settings.get("power_on") {
+            Some(pwr) => {
+                if !pwr.as_bool().unwrap() {
+                    return Err("stopping sensor start() - power_on setting is false".to_string());
+                }
+            }
+            _ => return Err("failed to validate configuration - missing power_on setting".to_string())
+        }
+
+        match self.settings.get("serial") {
+            Some(serial) => {
+                if serial.as_str().unwrap().is_empty() {
+                    return Err("stopping sensor start() - missing target serial port".to_string());
+                }
+            }
+            _ => return Err("failed to validate configuration - missing power_on setting".to_string())
+        }
+
+        println!("configuration correctly validated for adapter {}", self.name);
         Ok(())
     }       
 
     fn start(&mut self, shared_data: Arc<(Mutex<VecDeque<Pms7003SensorMeasurement>>, Condvar)>, shutdown_request: Arc<Mutex<bool>>) -> Result<(), String> {
         match Socket::<Pms7003SensorMeasurement>::validate_config(self) {
             Ok(_) => println!("configuration correctly validated for adapter: {}", self.name),
-            _ => return Err("failed to validate configuration - start aborted.".to_string())
+            Err(e) => {
+                println!("configuration validation failure reason: {}", e);
+                return Err("failed to validate configuration - start aborted.".to_string())
+            }
         }
         
         //TODO: fix null path to serial device in settings config
-        let target_serial_path: String = "/dev/ttyUSB0".to_string();
-
+        let target_serial_path: String = String::from(self.settings.get("serial").unwrap().as_str().unwrap());
+        println!("adapter: {} serial path: {}", self.name, target_serial_path);
+        
         self.handle = Some(spawn(move || {
             let device = linux_embedded_hal::Serial::open(target_serial_path).expect("failed to retrieve device serial port path from configuration");
             let mut sensor = Pms7003Sensor::new(device);

@@ -1,8 +1,19 @@
 
-#[derive(Eq, PartialEq, Hash, Clone, Copy)]
+#[derive(Eq, PartialEq, Hash, Clone, Copy, Debug)]
 pub enum AdapterType {
     Pms7003,
     Dummy,
+    Unknown,
+}
+
+impl AdapterType {
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "Pms7003" => AdapterType::Pms7003,
+            "Dummy" => AdapterType::Dummy,
+            _ => AdapterType::Unknown,
+        }
+    }
 }
 
 impl std::fmt::Display for AdapterType {
@@ -10,6 +21,7 @@ impl std::fmt::Display for AdapterType {
         match self {
             AdapterType::Pms7003 => write!(f, "Pms7003"),
             AdapterType::Dummy => write!(f, "Dummy"),
+            AdapterType::Unknown => write!(f, "Unknown"),
         }
     }
 }

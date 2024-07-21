@@ -10,6 +10,7 @@ pub struct HardwareInterface {
     pub tag: String,
     pub settings: serde_json::Value,
     pub adapters: HashMap<AdapterType, (Adapter,  Arc<(Mutex<VecDeque<Pms7003SensorMeasurement>>, Condvar)>, Arc<Mutex<bool>>)>,
+    pub configs_cache: HashMap<AdapterType, serde_json::Value>,
 }
 
 impl HardwareInterface {
@@ -18,6 +19,7 @@ impl HardwareInterface {
             tag,
             settings,
             adapters: HashMap::new(),
+            configs_cache: HashMap::new(),
         };
         instance.register_adapters();
         instance
@@ -57,11 +59,16 @@ impl HardwareInterface {
         });
     }
 
-    fn create_adapter(&mut self, adapter_type: AdapterType) -> () {
+    fn create_adapter(&mut self, adapter_type: AdapterType) -> () { 
         let adapter = match adapter_type {
-            AdapterType::Pms7003 => Some(Adapter::new(adapter_type.to_string(), self.settings["sensors"]["pms7003"].clone())),
-            AdapterType::Dummy => Some(Adapter::new(adapter_type.to_string(), self.settings["sensors"]["dummy"].clone())),
+            AdapterType::Pms7003 => Some(Adapter::new(adapter_type.to_string(), self.configs_cache.get(&adapter_type).expect("failed to retrieve clone of config pms7003").clone())),
+            AdapterType::Dummy => Some(Adapter::new(adapter_type.to_string(), self.configs_cache.get(&adapter_type).expect("failed to retrieve clone of config dummy").clone())),
+            _  => {
+                println!("{} failed to create adapter: {}", self.tag, adapter_type.to_string());
+                return;
+            }
         };
+
         self.adapters.insert(adapter_type, (
             adapter.expect("missing adapter"),
             Arc::new((Mutex::new(VecDeque::new()), Condvar::new())),
@@ -71,6 +78,17 @@ impl HardwareInterface {
     }
 
     fn register_adapters(&mut self) -> () {
+        let sensors = self.settings.get("sensors").and_then(|s| s.as_array()).expect("failed to get sensors array from config.");
+        for i in 0..sensors.len() {
+            let k = sensors[i].get("name").and_then(|s| s.as_str()).expect("failed to get sensors name from config.");
+            println!("extracted sensor name: {}", k);
+            let v = sensors.get(i).expect("failed to get sensor config.");
+            println!("extracted sensor: {:?}", v);
+            self.configs_cache.insert(AdapterType::from_str(k), v.clone());
+        }
+
+        println!("{} registered adapters configs: {:?}", self.tag, self.configs_cache);
+
         for adapter_type in SOURCE_ADAPTERS { 
             self.create_adapter(adapter_type);
         }
