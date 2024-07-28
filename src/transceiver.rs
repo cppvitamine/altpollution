@@ -80,6 +80,7 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
                             pm2_c_5_atm: frame.pm2_5_atm as i32,
                             pm10_atm: frame.pm10_atm as i32,                      
                         };
+                        max_retry = 20;
                         shared_data.0.lock().unwrap().push_back(measurement);
                         shared_data.1.notify_one();
                     }
