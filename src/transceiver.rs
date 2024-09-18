@@ -58,8 +58,7 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
             }
         }
         
-        //TODO: fix null path to serial device in settings config
-        let target_serial_path: String = String::from(self.settings.get("serial").unwrap().as_str().unwrap());
+        let target_serial_path: String = String::from(self.settings.get("serial").expect("failed to get target serial port").as_str().unwrap());
         println!("adapter: {} serial path: {}", self.name, target_serial_path);
         
         self.handle = Some(spawn(move || {
