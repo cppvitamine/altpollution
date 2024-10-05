@@ -4,12 +4,17 @@ mod sensors;
 mod transceiver;
 
 use crate::{interfaces::HardwareInterface, constants::AdapterType};
-use crate::sensors::Pms7003SensorMeasurement;
-
-use prost::bytes::buf;
-use prost::Message;
+use std::sync::atomic::{AtomicBool, Ordering};
+use signal_hook::consts::TERM_SIGNALS;
+use signal_hook::flag;
 
 fn main() -> Result<(), String> {
+    let running = std::sync::Arc::new(AtomicBool::new(true));
+    for sig in TERM_SIGNALS {
+        flag::register(*sig, std::sync::Arc::clone(&running)).expect("Failed to register signal handler");
+        flag::register_conditional_shutdown(*sig, 1, std::sync::Arc::clone(&running)).expect("Failed to register conditional handler");
+    }
+
     const TAG: &'static str = "[main]";
     let sensor_config: &'static str = include_str!("../config/sensors.json");
     println!("{} reading configuration from ../config/sensors.json - config value {}", TAG, sensor_config);
@@ -27,28 +32,11 @@ fn main() -> Result<(), String> {
         Err(e) => panic!("{} failure to start target sensor Pms7003 reason: {} - program will exit now.", TAG, e)
     }
 
-    let adapt_target: AdapterType = AdapterType::Pms7003;
-    let pms_events = intf.adapters[&adapt_target].1.clone();
-
-    loop {
-        let (lock, cvar) = &*pms_events;
-        let mut queue = cvar.wait(lock.lock().unwrap()).unwrap();
-
-        if let Some(received_frame) = queue.pop_front() {
-            println!("{} PMS7003 frame received: {:?}", TAG, received_frame);
-            let mut container: Vec<u8> = Vec::with_capacity(received_frame.encoded_len());
-            match received_frame.encode(&mut container) {
-                Ok(_) => {
-                    println!("{} incoming PMS7003 frame correctly encoded: {:x?}", TAG, container);
-                }
-                Err(e) => {
-                    println!("{} incoming PMS7003 frame encoding failed: {:?}", TAG, e);
-                }
-            }
-        } else {
-            println!("{} No frame to process", TAG);
-        }
+    while running.load(Ordering::Relaxed) {
+        println!("{} heartbeat...", TAG);
+        std::thread::sleep(std::time::Duration::from_millis(5000));
     }
 
+    intf.start_adapters();
     Ok(())
 }
