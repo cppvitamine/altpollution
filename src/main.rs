@@ -37,6 +37,6 @@ fn main() -> Result<(), String> {
         std::thread::sleep(std::time::Duration::from_millis(5000));
     }
 
-    intf.start_adapters();
+    intf.stop_adapters();
     Ok(())
 }

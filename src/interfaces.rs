@@ -43,11 +43,14 @@ impl HardwareInterface {
     }
 
     pub fn stop_adapter(&mut self, target: &AdapterType) -> Result<(), String> {
-        let res = match self.adapters.get_mut(target) {
-            Some(adapter) => adapter.0.stop(adapter.1.clone()),
-            _ =>  Err("target adapter not found - not stopped.".to_string())
-        };
-        res
+        match self.adapters.get_mut(target) {
+            Some(adapter) => {
+                let shutdown_req = adapter.2.clone();
+                *shutdown_req.lock().unwrap() = true;
+                adapter.0.stop(adapter.1.clone())
+            },
+            _ =>  return Err("target adapter not found - not stopped.".to_string())
+        }
     }
 
     pub fn stop_adapters(&mut self) -> () {

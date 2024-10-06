@@ -62,8 +62,8 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
         let target_serial_path: String = String::from(self.settings.get("serial").expect("failed to get target serial port").as_str().unwrap());
         println!("adapter: {} serial path: {}", self.name, target_serial_path);
 
-        let (lock_prod, cvar_prod) = &*shared_data;
-        let (lock_cons, cvar_cons) = &*shared_data;
+        let shared_data_prod = shared_data.clone();
+        let shared_data_cons = shared_data.clone();
 
         let shutdown_producer = shutdown_request.clone();
         let shutdown_consumer = shutdown_request.clone();
@@ -72,6 +72,7 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
             let device = linux_embedded_hal::Serial::open(target_serial_path).expect("failed to retrieve device serial port path from configuration");
             let mut sensor = Pms7003Sensor::new(device);
             let mut max_retry: u8 = 20;
+            let (lock_prod, cvar_prod) = &*shared_data_prod;
             loop {
                 if *shutdown_producer.lock().unwrap() {
                     break;
@@ -103,6 +104,7 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
         }));
 
         self.consumer = Some(spawn(move || {
+            let (lock_cons, cvar_cons) = &*shared_data_cons;
             loop {
                 if *shutdown_consumer.lock().unwrap() {
                     break;
