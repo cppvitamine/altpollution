@@ -2,7 +2,9 @@ use std::fmt;
 use std::{collections::VecDeque, option::Option, sync::{Arc, Condvar, Mutex}, thread::{spawn, JoinHandle}};
 use linux_embedded_hal;
 use pms_7003::*;
-use crate::sensors::Pms7003SensorMeasurement;
+use prost::Message;
+use unqlite::{UnQLite, KV};
+use crate::{sensors::Pms7003SensorMeasurement, constants::PMS_7003_TOPIC};
 
 pub trait Socket<T> {
     fn validate_config(&mut self) -> Result<(), String>;
@@ -11,18 +13,19 @@ pub trait Socket<T> {
 }
 
 pub struct Adapter {
-    pub name: String,
-    pub settings: serde_json::Value,
+    name: String,
+    settings: serde_json::Value,
+    storage: Arc<Mutex<UnQLite>>,
     producer: Option<JoinHandle<()>>,
     consumer: Option<JoinHandle<()>>
 }
 
 impl Adapter {
-    pub fn new(name: String, settings: serde_json::Value) -> Self {
+    pub fn new(name: String, settings: serde_json::Value, storage: Arc<Mutex<UnQLite>>) -> Self {
         let producer = None;
         let consumer = None;
         println!("adapter: {} received settings: {:?}", name, settings);
-        Self {name, settings, producer, consumer}
+        Self {name, settings, storage, producer, consumer}
     }
 }
 
@@ -62,11 +65,14 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
         let target_serial_path: String = String::from(self.settings.get("serial").expect("failed to get target serial port").as_str().unwrap());
         println!("adapter: {} serial path: {}", self.name, target_serial_path);
 
+        /*shared resources */
         let shared_data_prod = shared_data.clone();
         let shared_data_cons = shared_data.clone();
 
         let shutdown_producer = shutdown_request.clone();
         let shutdown_consumer = shutdown_request.clone();
+
+        let storage = self.storage.clone();
 
         self.producer = Some(spawn(move || {
             let device = linux_embedded_hal::Serial::open(target_serial_path).expect("failed to retrieve device serial port path from configuration");
@@ -113,6 +119,12 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
                 let mut queue = cvar_cons.wait(lock_cons.lock().unwrap()).unwrap();
                 if let Some(rcv_evt) = queue.pop_front() {
                     println!("PMS7003 frame received: {:?}", rcv_evt);
+                    let db = storage.lock().unwrap();
+
+                    match db.kv_store(PMS_7003_TOPIC, rcv_evt.encode_to_vec()) {
+                        Ok(_) => println!("PMS7003 frame stored successfully on topic: {}", PMS_7003_TOPIC),
+                        Err(e) => println!("PMS7003 frame stored error: {}", e)
+                    }
                 } else {
                     println!("No frame to process");
                 }

@@ -14,9 +14,3 @@ pub struct Pms7003SensorMeasurement {
     #[prost(int32, tag = "6")]
     pub pm10_atm: i32,
 }
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DummySensor {
-    #[prost(string, tag = "1")]
-    pub fake_payload: ::prost::alloc::string::String,
-}

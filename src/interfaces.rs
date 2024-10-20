@@ -1,5 +1,6 @@
 use std::collections::{VecDeque, HashMap};
 use std::sync::{Arc, Condvar, Mutex};
+use unqlite::UnQLite;
 use crate::{transceiver::Adapter, constants::{AdapterType, SOURCE_ADAPTERS}};
 use crate::sensors::Pms7003SensorMeasurement;
 use crate::transceiver::Socket;
@@ -7,10 +8,11 @@ use crate::transceiver::Socket;
 const TAG: &'static str = "[interfaces]";
 
 pub struct HardwareInterface {
-    pub tag: String,
-    pub settings: serde_json::Value,
-    pub adapters: HashMap<AdapterType, (Adapter,  Arc<(Mutex<VecDeque<Pms7003SensorMeasurement>>, Condvar)>, Arc<Mutex<bool>>)>,
-    pub configs_cache: HashMap<AdapterType, serde_json::Value>,
+    tag: String,
+    settings: serde_json::Value,
+    storage: Arc<Mutex<UnQLite>>,
+    adapters: HashMap<AdapterType, (Adapter,  Arc<(Mutex<VecDeque<Pms7003SensorMeasurement>>, Condvar)>, Arc<Mutex<bool>>)>,
+    configs_cache: HashMap<AdapterType, serde_json::Value>,
 }
 
 impl HardwareInterface {
@@ -18,6 +20,7 @@ impl HardwareInterface {
         let mut instance = Self {
             tag,
             settings,
+            storage: Arc::new(Mutex::new(UnQLite::create("sensors_data.db"))),
             adapters: HashMap::new(),
             configs_cache: HashMap::new(),
         };
@@ -62,10 +65,9 @@ impl HardwareInterface {
         });
     }
 
-    fn create_adapter(&mut self, adapter_type: AdapterType) -> () { 
+    fn create_adapter(&mut self, adapter_type: AdapterType) -> () {
         let adapter = match adapter_type {
-            AdapterType::Pms7003 => Some(Adapter::new(adapter_type.to_string(), self.configs_cache.get(&adapter_type).expect("failed to retrieve clone of config pms7003").clone())),
-            AdapterType::Dummy => Some(Adapter::new(adapter_type.to_string(), self.configs_cache.get(&adapter_type).expect("failed to retrieve clone of config dummy").clone())),
+            AdapterType::Pms7003 => Some(Adapter::new(adapter_type.to_string(), self.configs_cache.get(&adapter_type).expect("failed to retrieve clone of config pms7003").clone(), self.storage.clone())),
             _  => {
                 println!("{} failed to create adapter: {}", self.tag, adapter_type.to_string());
                 return;
@@ -92,8 +94,8 @@ impl HardwareInterface {
 
         println!("{} registered adapters configs: {:?}", self.tag, self.configs_cache);
 
-        for adapter_type in SOURCE_ADAPTERS { 
-            self.create_adapter(adapter_type);
+        for source in SOURCE_ADAPTERS {
+            self.create_adapter(source);
         }
     }
 }
