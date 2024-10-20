@@ -1,18 +1,18 @@
 {
     "sensors" : [
-        {
-            "pms7003" : 
             {
+                "name": "Pms7003",
                 "baudrate" : 9600,
                 "serial" : "/dev/ttyUSB0",
                 "databits" : 8,
                 "stopbits": 1,
                 "parity" : "null",
                 "flowcontrol" : "null",
-                "timeout" : 2
+                "timeout" : 2,
+                "power_on" : true
             },
-            "dummy" :
             {
+                "name" : "Dummy",
                 "baudrate" : 0,
                 "serial" : "null",
                 "databits" : 0,
@@ -20,8 +20,8 @@
                 "parity" : "null",
                 "flowcontrol" : "null",
                 "timeout" : 0,
-                "clock_ms": 1000
+                "clock_ms": 1000,
+                "power_on" : false
             }
-        }
     ]
 }

@@ -9,7 +9,3 @@ message PMS7003SensorMeasurement {
     int32 pm2_c_5_atm = 5;
     int32 pm10_atm = 6;
 }
-
-message DummySensor {
-    string fake_payload = 1;
-}

@@ -1,5 +1,6 @@
 use std::collections::{VecDeque, HashMap};
 use std::sync::{Arc, Condvar, Mutex};
+use unqlite::UnQLite;
 use crate::{transceiver::Adapter, constants::{AdapterType, SOURCE_ADAPTERS}};
 use crate::sensors::Pms7003SensorMeasurement;
 use crate::transceiver::Socket;
@@ -7,9 +8,11 @@ use crate::transceiver::Socket;
 const TAG: &'static str = "[interfaces]";
 
 pub struct HardwareInterface {
-    pub tag: String,
-    pub settings: serde_json::Value,
-    pub adapters: HashMap<AdapterType, (Adapter,  Arc<(Mutex<VecDeque<Pms7003SensorMeasurement>>, Condvar)>, Arc<Mutex<bool>>)>,
+    tag: String,
+    settings: serde_json::Value,
+    storage: Arc<Mutex<UnQLite>>,
+    adapters: HashMap<AdapterType, (Adapter,  Arc<(Mutex<VecDeque<Pms7003SensorMeasurement>>, Condvar)>, Arc<Mutex<bool>>)>,
+    configs_cache: HashMap<AdapterType, serde_json::Value>,
 }
 
 impl HardwareInterface {
@@ -17,7 +20,9 @@ impl HardwareInterface {
         let mut instance = Self {
             tag,
             settings,
+            storage: Arc::new(Mutex::new(UnQLite::create("sensors_data.db"))),
             adapters: HashMap::new(),
+            configs_cache: HashMap::new(),
         };
         instance.register_adapters();
         instance
@@ -41,11 +46,14 @@ impl HardwareInterface {
     }
 
     pub fn stop_adapter(&mut self, target: &AdapterType) -> Result<(), String> {
-        let res = match self.adapters.get_mut(target) {
-            Some(adapter) => adapter.0.stop(adapter.1.clone()),
-            _ =>  Err("target adapter not found - not stopped.".to_string())
-        };
-        res
+        match self.adapters.get_mut(target) {
+            Some(adapter) => {
+                let shutdown_req = adapter.2.clone();
+                *shutdown_req.lock().unwrap() = true;
+                adapter.0.stop(adapter.1.clone())
+            },
+            _ =>  return Err("target adapter not found - not stopped.".to_string())
+        }
     }
 
     pub fn stop_adapters(&mut self) -> () {
@@ -59,9 +67,13 @@ impl HardwareInterface {
 
     fn create_adapter(&mut self, adapter_type: AdapterType) -> () {
         let adapter = match adapter_type {
-            AdapterType::Pms7003 => Some(Adapter::new(adapter_type.to_string(), self.settings["sensors"]["pms7003"].clone())),
-            AdapterType::Dummy => Some(Adapter::new(adapter_type.to_string(), self.settings["sensors"]["dummy"].clone())),
+            AdapterType::Pms7003 => Some(Adapter::new(adapter_type.to_string(), self.configs_cache.get(&adapter_type).expect("failed to retrieve clone of config pms7003").clone(), self.storage.clone())),
+            _  => {
+                println!("{} failed to create adapter: {}", self.tag, adapter_type.to_string());
+                return;
+            }
         };
+
         self.adapters.insert(adapter_type, (
             adapter.expect("missing adapter"),
             Arc::new((Mutex::new(VecDeque::new()), Condvar::new())),
@@ -71,8 +83,19 @@ impl HardwareInterface {
     }
 
     fn register_adapters(&mut self) -> () {
-        for adapter_type in SOURCE_ADAPTERS { 
-            self.create_adapter(adapter_type);
+        let sensors = self.settings.get("sensors").and_then(|s| s.as_array()).expect("failed to get sensors array from config.");
+        for i in 0..sensors.len() {
+            let k = sensors[i].get("name").and_then(|s| s.as_str()).expect("failed to get sensors name from config.");
+            println!("extracted sensor name: {}", k);
+            let v = sensors.get(i).expect("failed to get sensor config.");
+            println!("extracted sensor: {:?}", v);
+            self.configs_cache.insert(AdapterType::from_str(k), v.clone());
+        }
+
+        println!("{} registered adapters configs: {:?}", self.tag, self.configs_cache);
+
+        for source in SOURCE_ADAPTERS {
+            self.create_adapter(source);
         }
     }
 }
