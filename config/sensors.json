@@ -10,18 +10,6 @@
                 "flowcontrol" : "null",
                 "timeout" : 2,
                 "power_on" : true
-            },
-            {
-                "name" : "Dummy",
-                "baudrate" : 0,
-                "serial" : "null",
-                "databits" : 0,
-                "stopbits": 0,
-                "parity" : "null",
-                "flowcontrol" : "null",
-                "timeout" : 0,
-                "clock_ms": 1000,
-                "power_on" : false
             }
     ]
 }
