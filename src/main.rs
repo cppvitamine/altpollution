@@ -5,8 +5,10 @@ mod transceiver;
 
 use crate::{interfaces::HardwareInterface};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
+use unqlite::UnQLite;
 
 fn main() -> Result<(), String> {
     let running = std::sync::Arc::new(AtomicBool::new(true));
@@ -26,7 +28,8 @@ fn main() -> Result<(), String> {
 
     println!("{} sensors configuration loaded: {:?}", TAG, cfg);
 
-    let mut intf: HardwareInterface = HardwareInterface::new("HW Interface".to_string(), cfg);
+    let storage: Arc<Mutex<UnQLite>> = Arc::new(Mutex::new(UnQLite::create("sensors_data.db")));
+    let mut intf: HardwareInterface = HardwareInterface::new("HW Interface".to_string(), cfg, storage);
     intf.start_adapters();
 
     while running.load(Ordering::Relaxed) {

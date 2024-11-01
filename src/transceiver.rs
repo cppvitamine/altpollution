@@ -3,7 +3,7 @@ use std::{collections::VecDeque, option::Option, sync::{Arc, Condvar, Mutex}, th
 use linux_embedded_hal;
 use pms_7003::*;
 use prost::Message;
-use unqlite::{UnQLite, KV};
+use unqlite::{Transaction, UnQLite, KV};
 use signal_hook::consts::signal::SIGKILL;
 use signal_hook::low_level::raise;
 use crate::{sensors::Pms7003SensorMeasurement, constants::PMS_7003_TOPIC};
@@ -132,7 +132,10 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
                     let db = storage.lock().unwrap();
 
                     match db.kv_store(PMS_7003_TOPIC, rcv_evt.encode_to_vec()) {
-                        Ok(_) => println!("PMS7003 frame stored successfully on topic: {}", PMS_7003_TOPIC),
+                        Ok(_) => {
+                            db.commit().unwrap();
+                            println!("PMS7003 frame stored successfully on topic: {}", PMS_7003_TOPIC);
+                        },
                         Err(e) => println!("PMS7003 frame stored error: {}", e)
                     }
                 } else {

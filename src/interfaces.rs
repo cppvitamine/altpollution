@@ -16,11 +16,11 @@ pub struct HardwareInterface {
 }
 
 impl HardwareInterface {
-    pub fn new(tag: String, settings: serde_json::Value) -> Self {
+    pub fn new(tag: String, settings: serde_json::Value, storage: Arc<Mutex<UnQLite>>) -> Self {
         let mut instance = Self {
             tag,
             settings,
-            storage: Arc::new(Mutex::new(UnQLite::create("sensors_data.db"))),
+            storage,
             adapters: HashMap::new(),
             configs_cache: HashMap::new(),
         };
