@@ -27,10 +27,7 @@ fn main() -> Result<(), String> {
     println!("{} sensors configuration loaded: {:?}", TAG, cfg);
 
     let mut intf: HardwareInterface = HardwareInterface::new("HW Interface".to_string(), cfg);
-    match intf.start_adapter(&AdapterType::Pms7003) {
-        Ok(_) => println!("{} PMS7003 sensor correctly started!", TAG),
-        Err(e) => panic!("{} failure to start target sensor Pms7003 reason: {} - program will exit now.", TAG, e)
-    }
+    intf.start_adapters();
 
     while running.load(Ordering::Relaxed) {
         println!("{} heartbeat...", TAG);

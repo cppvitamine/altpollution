@@ -4,6 +4,8 @@ use linux_embedded_hal;
 use pms_7003::*;
 use prost::Message;
 use unqlite::{UnQLite, KV};
+use signal_hook::consts::signal::SIGKILL;
+use signal_hook::low_level::raise;
 use crate::{sensors::Pms7003SensorMeasurement, constants::PMS_7003_TOPIC};
 
 pub trait Socket<T> {
@@ -73,10 +75,17 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
         let shutdown_consumer = shutdown_request.clone();
 
         let storage = self.storage.clone();
+        let serial_device: Option<linux_embedded_hal::Serial> =  match linux_embedded_hal::Serial::open(target_serial_path) {
+            Ok(serial_device) => Some(serial_device),
+            Err(_) => None,
+        };
 
         self.producer = Some(spawn(move || {
-            let device = linux_embedded_hal::Serial::open(target_serial_path).expect("failed to retrieve device serial port path from configuration");
-            let mut sensor = Pms7003Sensor::new(device);
+            if !serial_device.is_some() {
+                Self::abort("failed to initialize PMS70003 serial port connection".to_string());
+                return
+            }
+            let mut sensor = Pms7003Sensor::new(serial_device.unwrap());
             let mut max_retry: u8 = 20;
             let (lock_prod, cvar_prod) = &*shared_data_prod;
             loop {
@@ -100,6 +109,7 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
                     _ => {
                         max_retry -= 1;
                         if max_retry == 0 {
+                            *shutdown_producer.lock().unwrap() = true;
                             println!("[FATAL] failed to read PMS7003 sensor frame, no retry left - stopping adapter");
                             break;
                         }
@@ -145,6 +155,13 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
         }
         println!("frames in queue after stop: {}", shared_data.0.lock().unwrap().len());
         Ok(())
+    }
+}
+
+impl Adapter {
+    fn abort(reason: String) -> () {
+        println!("--- adapter aborted due to : {}", reason);
+        raise(SIGKILL).expect("Failed to send SIGKILL");
     }
 }
 
