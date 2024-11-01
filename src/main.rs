@@ -3,7 +3,7 @@ mod interfaces;
 mod sensors;
 mod transceiver;
 
-use crate::{interfaces::HardwareInterface, constants::AdapterType};
+use crate::{interfaces::HardwareInterface};
 use std::sync::atomic::{AtomicBool, Ordering};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
