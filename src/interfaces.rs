@@ -28,6 +28,7 @@ impl HardwareInterface {
         instance
     }
 
+    #[allow(dead_code)]
     pub fn start_adapter(&mut self, target: &AdapterType) -> Result<(), String> {
          let res = match self.adapters.get_mut(target) {
             Some(adapter) => adapter.0.start(adapter.1.clone(), adapter.2.clone()),
@@ -45,6 +46,7 @@ impl HardwareInterface {
         });
     }
 
+    #[allow(dead_code)]
     pub fn stop_adapter(&mut self, target: &AdapterType) -> Result<(), String> {
         match self.adapters.get_mut(target) {
             Some(adapter) => {
