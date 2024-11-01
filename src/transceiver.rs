@@ -80,13 +80,14 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
             Err(_) => None,
         };
 
+        const MAX_RETRIES_ALLOWED: u8 = 20;
         self.producer = Some(spawn(move || {
             if !serial_device.is_some() {
                 Self::abort("failed to initialize PMS70003 serial port connection".to_string());
                 return
             }
             let mut sensor = Pms7003Sensor::new(serial_device.unwrap());
-            let mut max_retry: u8 = 20;
+            let mut retry_left: u8 = MAX_RETRIES_ALLOWED;
             let (lock_prod, cvar_prod) = &*shared_data_prod;
             loop {
                 if *shutdown_producer.lock().unwrap() {
@@ -102,18 +103,18 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
                             pm2_c_5_atm: frame.pm2_5_atm as i32,
                             pm10_atm: frame.pm10_atm as i32,
                         };
-                        max_retry = 20;
+                        retry_left = MAX_RETRIES_ALLOWED;
                         lock_prod.lock().unwrap().push_back(measurement);
                         cvar_prod.notify_one();
                     }
                     _ => {
-                        max_retry -= 1;
-                        if max_retry == 0 {
+                        retry_left -= 1;
+                        if retry_left == 0 {
                             *shutdown_producer.lock().unwrap() = true;
                             println!("[FATAL] failed to read PMS7003 sensor frame, no retry left - stopping adapter");
                             break;
                         }
-                        println!("failed to read PMS7003 sensor frame, retry left: {}", max_retry);
+                        println!("failed to read PMS7003 sensor frame, retry left: {}", retry_left);
                     }
                 }
             }
