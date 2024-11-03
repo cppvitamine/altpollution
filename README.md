@@ -1,4 +1,3 @@
-
 # altpollution
 
 **altpollution** is a real-time air quality monitoring project utilizing the PMS7003 air quality sensor. Built in Rust, the project gathers air quality data, stores it locally, and publishes it in a format compatible with any software respecting the defined gRPC data structure.
