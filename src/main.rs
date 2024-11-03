@@ -3,10 +3,12 @@ mod interfaces;
 mod sensors;
 mod transceiver;
 
-use crate::{interfaces::HardwareInterface, constants::AdapterType};
+use crate::{interfaces::HardwareInterface};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::flag;
+use unqlite::UnQLite;
 
 fn main() -> Result<(), String> {
     let running = std::sync::Arc::new(AtomicBool::new(true));
@@ -26,11 +28,9 @@ fn main() -> Result<(), String> {
 
     println!("{} sensors configuration loaded: {:?}", TAG, cfg);
 
-    let mut intf: HardwareInterface = HardwareInterface::new("HW Interface".to_string(), cfg);
-    match intf.start_adapter(&AdapterType::Pms7003) {
-        Ok(_) => println!("{} PMS7003 sensor correctly started!", TAG),
-        Err(e) => panic!("{} failure to start target sensor Pms7003 reason: {} - program will exit now.", TAG, e)
-    }
+    let storage: Arc<Mutex<UnQLite>> = Arc::new(Mutex::new(UnQLite::create("sensors_data.db")));
+    let mut intf: HardwareInterface = HardwareInterface::new("HW Interface".to_string(), cfg, storage);
+    intf.start_adapters();
 
     while running.load(Ordering::Relaxed) {
         println!("{} heartbeat...", TAG);

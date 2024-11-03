@@ -3,7 +3,9 @@ use std::{collections::VecDeque, option::Option, sync::{Arc, Condvar, Mutex}, th
 use linux_embedded_hal;
 use pms_7003::*;
 use prost::Message;
-use unqlite::{UnQLite, KV};
+use unqlite::{Transaction, UnQLite, KV};
+use signal_hook::consts::signal::SIGKILL;
+use signal_hook::low_level::raise;
 use crate::{sensors::Pms7003SensorMeasurement, constants::PMS_7003_TOPIC};
 
 pub trait Socket<T> {
@@ -73,11 +75,19 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
         let shutdown_consumer = shutdown_request.clone();
 
         let storage = self.storage.clone();
+        let serial_device: Option<linux_embedded_hal::Serial> =  match linux_embedded_hal::Serial::open(target_serial_path) {
+            Ok(serial_device) => Some(serial_device),
+            Err(_) => None,
+        };
 
+        const MAX_RETRIES_ALLOWED: u8 = 20;
         self.producer = Some(spawn(move || {
-            let device = linux_embedded_hal::Serial::open(target_serial_path).expect("failed to retrieve device serial port path from configuration");
-            let mut sensor = Pms7003Sensor::new(device);
-            let mut max_retry: u8 = 20;
+            if !serial_device.is_some() {
+                Self::abort("failed to initialize PMS70003 serial port connection".to_string());
+                return
+            }
+            let mut sensor = Pms7003Sensor::new(serial_device.unwrap());
+            let mut retry_left: u8 = MAX_RETRIES_ALLOWED;
             let (lock_prod, cvar_prod) = &*shared_data_prod;
             loop {
                 if *shutdown_producer.lock().unwrap() {
@@ -93,17 +103,18 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
                             pm2_c_5_atm: frame.pm2_5_atm as i32,
                             pm10_atm: frame.pm10_atm as i32,
                         };
-                        max_retry = 20;
+                        retry_left = MAX_RETRIES_ALLOWED;
                         lock_prod.lock().unwrap().push_back(measurement);
                         cvar_prod.notify_one();
                     }
                     _ => {
-                        max_retry -= 1;
-                        if max_retry == 0 {
+                        retry_left -= 1;
+                        if retry_left == 0 {
+                            *shutdown_producer.lock().unwrap() = true;
                             println!("[FATAL] failed to read PMS7003 sensor frame, no retry left - stopping adapter");
                             break;
                         }
-                        println!("failed to read PMS7003 sensor frame, retry left: {}", max_retry);
+                        println!("failed to read PMS7003 sensor frame, retry left: {}", retry_left);
                     }
                 }
             }
@@ -122,7 +133,10 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
                     let db = storage.lock().unwrap();
 
                     match db.kv_store(PMS_7003_TOPIC, rcv_evt.encode_to_vec()) {
-                        Ok(_) => println!("PMS7003 frame stored successfully on topic: {}", PMS_7003_TOPIC),
+                        Ok(_) => {
+                            db.commit().unwrap();
+                            println!("PMS7003 frame stored successfully on topic: {}", PMS_7003_TOPIC);
+                        },
                         Err(e) => println!("PMS7003 frame stored error: {}", e)
                     }
                 } else {
@@ -145,6 +159,13 @@ impl Socket<Pms7003SensorMeasurement> for Adapter {
         }
         println!("frames in queue after stop: {}", shared_data.0.lock().unwrap().len());
         Ok(())
+    }
+}
+
+impl Adapter {
+    fn abort(reason: String) -> () {
+        println!("--- adapter aborted due to : {}", reason);
+        raise(SIGKILL).expect("Failed to send SIGKILL");
     }
 }
 

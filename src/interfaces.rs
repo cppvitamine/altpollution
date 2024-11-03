@@ -16,11 +16,11 @@ pub struct HardwareInterface {
 }
 
 impl HardwareInterface {
-    pub fn new(tag: String, settings: serde_json::Value) -> Self {
+    pub fn new(tag: String, settings: serde_json::Value, storage: Arc<Mutex<UnQLite>>) -> Self {
         let mut instance = Self {
             tag,
             settings,
-            storage: Arc::new(Mutex::new(UnQLite::create("sensors_data.db"))),
+            storage,
             adapters: HashMap::new(),
             configs_cache: HashMap::new(),
         };
@@ -28,6 +28,7 @@ impl HardwareInterface {
         instance
     }
 
+    #[allow(dead_code)]
     pub fn start_adapter(&mut self, target: &AdapterType) -> Result<(), String> {
          let res = match self.adapters.get_mut(target) {
             Some(adapter) => adapter.0.start(adapter.1.clone(), adapter.2.clone()),
@@ -45,6 +46,7 @@ impl HardwareInterface {
         });
     }
 
+    #[allow(dead_code)]
     pub fn stop_adapter(&mut self, target: &AdapterType) -> Result<(), String> {
         match self.adapters.get_mut(target) {
             Some(adapter) => {
